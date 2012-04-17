@@ -1,0 +1,10 @@
+{
+  "name": "queue",
+  "main": "./index.js",
+  "version": "0.0.1",
+  "dependencies": {
+    "hiredis": "latest",
+    "redis": "latest",
+    "hash_ring": "0.2.0"
+    }
+  }
