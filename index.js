@@ -9,27 +9,30 @@ function MyQueue(name,redis) {
   this.client = redis;
 }
 
-MyQueue.prototype.push = function(message) {
-  var data = JSON.stringify({timestamp: +new Date(), pid: process.pid, message: message});
-  return this.client.lpush(this.queue_name, data);
-}
+MyQueue.prototype.push = function(data) {
+  var json_data = JSON.stringify({timestamp: +new Date(), pid: process.pid, data: data});
+  return this.client.lpush(this.queue_name, json_data);
+};
+
 MyQueue.prototype.enqueue = MyQueue.prototype.push;
 
 MyQueue.prototype.pop = function(fn) {
   var self = this;
   this.client.rpoplpush(this.queue_name, this.lock_queue_name,function(err,data) {
     if (err) {
-      return false;
-    }
-    var json = JSON.parse(data);
-    var result = fn(json);
+      fn(err,null);
+    } else {
+      var json = JSON.parse(data);
+      var result = fn(null,json);
 
-    if (!result) {
-      self.client.lpush(self.error_queue_name,data);
+      if (!result) {
+        self.client.lpush(self.error_queue_name,data);
+      }
+      self.client.lrem(self.lock_queue_name, 1, data);
     }
-    self.client.lrem(self.lock_queue_name, 1, data);
   });
-}
+};
+
 MyQueue.prototype.dequeue = MyQueue.prototype.pop;
 
 MyQueue.createQueue = function(name,port,host) {
@@ -42,7 +45,7 @@ MyQueue.createQueue = function(name,port,host) {
   }
   var q = new MyQueue(name,redis_client);
   return q;
-}
+};
 
 MyQueue.shard = function(key,rings) {
   var hash_ring = new (require('hash_ring'))(rings);
@@ -51,4 +54,4 @@ MyQueue.shard = function(key,rings) {
   var port = node[1];
   this.redis_client = redis.createClient(port,host);
   return this;
-}
+};
