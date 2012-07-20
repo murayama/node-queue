@@ -3,15 +3,24 @@ var redis = require('redis');
 exports = module.exports = MyQueue;
 
 function MyQueue(name,redis) {
-  this.queue_name = "queue:" + name;
-  this.lock_queue_name = "queue:" + name + ":lock";
-  this.error_queue_name = "queue:" + name + ":error";
+  this.set(name);
   this.client = redis;
 }
 
+MyQueue.prototype.set = function (name) {
+  this.queue_name = "queue:" + name;
+  this.lock_queue_name = "queue:" + name + ":" + process.pid +  ":lock";
+  this.error_queue_name = "queue:" + name + ":error";
+};
+
 MyQueue.prototype.push = function(data) {
-  var json_data = JSON.stringify({timestamp: +new Date(), pid: process.pid, data: data});
-  return this.client.lpush(this.queue_name, json_data);
+  var json_data = '';
+  try {
+    json_data = JSON.stringify({timestamp: +new Date(), pid: process.pid, data: data});
+    return this.client.lpush(this.queue_name, json_data);
+  } catch (e) {
+    return false;
+  }
 };
 
 MyQueue.prototype.enqueue = MyQueue.prototype.push;
